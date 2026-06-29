@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -303,15 +302,17 @@ func newPkcs11Decrypter(mechanism *pkcs11.Mechanism, key *p11.PrivateKey, public
 }
 
 func chooseMechanism(algorithm pkix.AlgorithmIdentifier) (*pkcs11.Mechanism, error) {
-	rsaEncryption := asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
-	rsaOAEPEncryption := asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 7}
-
-	if algorithm.Algorithm.Equal(rsaEncryption) {
+	if algorithm.Algorithm.Equal(oidRSAEncryption) {
 		return pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil), nil
 	}
 
-	if algorithm.Algorithm.Equal(rsaOAEPEncryption) {
-		return pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, nil), nil
+	if algorithm.Algorithm.Equal(oidRSAOAEPEncryption) {
+		params, err := rsaOAEPParams(algorithm.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
+		return pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_OAEP, params), nil
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm %s", algorithm.Algorithm)
